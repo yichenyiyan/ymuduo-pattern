@@ -1,0 +1,3 @@
+/mnt/hgfs/Share/TMP/mymuduo/build/CMakeFiles/MyExecutable.dir
+/mnt/hgfs/Share/TMP/mymuduo/build/CMakeFiles/edit_cache.dir
+/mnt/hgfs/Share/TMP/mymuduo/build/CMakeFiles/rebuild_cache.dir

@@ -1,9 +1,15 @@
 #ifndef YMUDUO_LOGGER
 #define YMUDUO_LOGGER
 
+#include <unistd.h>
+#include <fcntl.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
 
 #include <string>
+#include <functional>
 
 #include "noncopyable.h"
 
@@ -68,14 +74,33 @@ public:
     void setLogLevel(int level);
     // 写日志
     void log(std::string msg);
-    using OutputFunc = void (*)(const char*, int);
-    using FlushFunc = void (*)();
+    using OutputFunc = std::function<void(const std::string&)>;
+
+    // 设置日志输出回调 
     static void setOutPut(OutputFunc);
-    static void setFlush(FlushFunc);
+
+    ~Logger() { close(log_file_fd_); }
+
+    void closeLoggerRecord() { allowRecord = false; }
+
+    void startLogerRecord() { allowRecord = true; }
 
 private:
+    bool allowRecord;
+
+    void defaultOutput(const std::string& msg);
+
+    OutputFunc g_output;
+    /* log文件描述符 */
+    int log_file_fd_;
     int logLevel_;
-    Logger(){}
+    // 构造函数私有化
+    Logger() : allowRecord(true) {
+        log_file_fd_ = open(log_file_name_, O_WRONLY | O_CREAT | O_APPEND, 0644);
+        g_output = std::bind(&Logger::defaultOutput, this, std::placeholders::_1);
+    }
+
+    const char* log_file_name_ = "Server.log";
 };
 
 

@@ -1,3 +1,4 @@
+
 #include <iostream>
 
 #include "Logger.h"
@@ -9,56 +10,50 @@ using namespace ymuduo;
 
 //  获取日志单例
 
-namespace ymuduo {
+using namespace ymuduo; 
 
-void defaultOutput(const char* msg, int len) {
-    size_t n = fwrite(msg, 1, len, stdout);
-    
-    (void)n;
+// 默认输出到Server.log文件中
+void Logger::defaultOutput(const std::string& msg) {
+    if (!allowRecord)
+        return;
+    size_t n = write(log_file_fd_, msg.c_str(), msg.size());
 }
 
-void defaultFlush() {
-    fflush(stdout);
-}
-
-Logger::OutputFunc g_output = defaultOutput;
-Logger::FlushFunc g_flush = defaultFlush;
+// void Logger::defaultFlush() {
+//     fflush(stdout);
+// }
 
 
-}
 
 Logger& Logger::GetInstance() {
     static Logger logger;
     return logger;
 }
+
 // 设置日志级别
 void Logger::setLogLevel(int level) {
     logLevel_ = level;
 }
+
 // 写日志
 void Logger::log(std::string msg) {
     std::string buf = "";
     switch (logLevel_) {
-        case INFO: buf += "[INFO]"; break;
-        case ERROR: buf += "[ERROR]"; break;
-        case FATAL: buf += "[FATAL]"; break;
-        case DEBUG: buf += "[DEBUG]"; break;
-        default: break;
+    case INFO:  buf += "[INFO]" ; break;
+    case ERROR: buf += "[ERROR]"; break;
+    case FATAL: buf += "[FATAL]"; break;
+    case DEBUG: buf += "[DEBUG]"; break;
+    default: break;
     }
-    buf += "Time:" + Timestamp::now().toFormattedString(false) + "Content:" + msg;
 
-    g_output(buf.c_str(), buf.size());
+    buf += "Time: " + Timestamp::now().toFormattedString(false) + " Content: " + msg + "\n";
+
+    g_output(buf);
+
     if (logLevel_ == FATAL) {
-        g_flush();
         exit(0);
     }
-    // std::cout << "print time : " << Timestamp::now().toFormattedString(false) <<  msg << std::endl;
 }
 
-void Logger::setOutPut(OutputFunc out) {
-    g_output = out;
-}
 
-void Logger::setFlush(FlushFunc flush) {
-    g_flush = flush;
-}
+

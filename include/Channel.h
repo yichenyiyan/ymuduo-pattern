@@ -6,7 +6,7 @@
 
 #include "Timestamp.h"
 #include "noncopyable.h"
-
+#include "SelectPoller.h"
 
 namespace ymuduo {
 
@@ -16,6 +16,7 @@ class EventLoop;  //前置声明类，在.cc中再包含，这样用户使用此
 //还绑定了 poller返回的具体事件
 class Channel : public noncopyable {
 public:
+    friend SelectPoller;
     using EventCallback = std::function<void()>;
     using ReadEventCallback = std::function<void(Timestamp)>;
 

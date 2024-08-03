@@ -33,6 +33,7 @@ private:
     const bool repeat_;
     const int64_t sequece_;
 
+    /* timer创建总数 */
     static std::atomic_int64_t s_numCreated_;
 };
 

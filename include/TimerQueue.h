@@ -23,6 +23,7 @@ public:
 
     // TimerQueue提供给loop的添加关闭定时器的接口函数。 必须是线程安全的（往往都在其他线程中被调用）
     TimerId addTimer(TimerCallback cb, Timestamp when, double interval);
+    // 取消 TimerId 的Timer
     void cancel(TimerId timerId);
 
 private:
@@ -36,10 +37,10 @@ private:
     void addTimerInLoop(TimerPtr timer);
     void cancelInLoop(TimerId timerId);
 
-    //当timerfd事件就绪时执行
+    // 当timerfd事件就绪时执行
     void handleRead();
 
-    //将所有超时的timer移除
+    // 将所有超时的timer移除
     std::vector<Entry> getExpired(Timestamp now);
     void reset(const std::vector<Entry>& expired, Timestamp now);
 

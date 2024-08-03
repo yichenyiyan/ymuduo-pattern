@@ -92,6 +92,7 @@ Timestamp EPollPoller::poll(int timeoutMs, ChannelList *activateChannels) {
             LOG_ERROR("EPollPoller poll error\n");
         }
     }
+    
     return now;
 }
 

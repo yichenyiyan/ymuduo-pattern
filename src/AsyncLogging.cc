@@ -2,53 +2,33 @@
 #include <assert.h>
 
 #include <chrono>
-#include <fstream>
 
 #include "Timestamp.h"
 #include "AsyncLogging.h"
 
-
-
 using namespace ymuduo;
 
-AsyncLogging::AsyncLogging(const std::string &basename,
-						   off_t rollSize,
-						   int flushInterval)
-	: flushInterval_(flushInterval),
-	  running_(false),
-	  basename_(basename),
-	  rollSize_(rollSize),
-	  thread_(std::bind(&AsyncLogging::threadFunc, this), "Logging"),
-	  latch_(1),
-	  mutex_(),
-	  cond_(),
-	  currentBuffer_(new Buffer),
-	  nextBuffer_(new Buffer),
-	  buffers_()
-{
+AsyncLogging::AsyncLogging(const std::string &basename, off_t rollSize, const std::string& out_log_file_name, int flushInterval)
+	: flushInterval_(flushInterval), running_(false), basename_(basename), buffers_()
+	, rollSize_(rollSize), thread_(std::bind(&AsyncLogging::threadFunc, this), "Logging")
+	, latch_(1), mutex_(), cond_(), currentBuffer_(new Buffer), nextBuffer_(new Buffer)
+	, log_file_name_(out_log_file_name) {
 	currentBuffer_->bzero();
 	nextBuffer_->bzero();
 	buffers_.reserve(16);
 }
 
-void AsyncLogging::append(const char *logline, int len)
-{
+void AsyncLogging::append(const char *logline, int len) {
 
 	std::unique_lock<std::mutex> lock(mutex_);
-	if (currentBuffer_->avail() > len)
-	{
+	if (currentBuffer_->avail() > len) {
 		currentBuffer_->append(logline, len);
-	}
-	else
-	{
+	} else {
 		buffers_.push_back(std::move(currentBuffer_));
 
-		if (nextBuffer_)
-		{
+		if (nextBuffer_) {
 			currentBuffer_ = std::move(nextBuffer_);
-		}
-		else
-		{
+		} else {
 			currentBuffer_.reset(new Buffer); // Rarely happens
 		}
 		currentBuffer_->append(logline, len);
@@ -56,87 +36,64 @@ void AsyncLogging::append(const char *logline, int len)
 	}
 }
 
-void AsyncLogging::threadFunc()
-{
+void AsyncLogging::threadFunc() {
 	latch_.countDown();
-	std::string file_name = basename_ + Timestamp::now().toFormattedString(false);
-	std::ofstream output;
-	output.open(file_name, std::ios::app);
-	// LogFile output(basename_, rollSize_, false);
-	
+	int fd = ::open(log_file_name_.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0644);
+	if (fd < 0) {
+		std::cerr << "Failed to open log file" << std::endl;
+		return;
+	}
+
 	BufferPtr newBuffer1(new Buffer);
 	BufferPtr newBuffer2(new Buffer);
 	newBuffer1->bzero();
 	newBuffer2->bzero();
 	BufferVector buffersToWrite;
 	buffersToWrite.reserve(16);
-	while (running_)
-	{
-		// std::assert(newBuffer1 && newBuffer1->length() == 0);
-		// assert(newBuffer2 && newBuffer2->length() == 0);
-		// assert(buffersToWrite.empty());
-
+	while (running_) {
 		{
 			std::unique_lock<std::mutex> lock(mutex_);
-			if (buffers_.empty()) // unusual usage!
-			{
-				cond_.wait_for(lock, std::chrono::seconds(1)*flushInterval_, 
-						[&] { 	return !buffers_.empty();	 });
+			if (buffers_.empty()) {
+				cond_.wait_for(lock, std::chrono::seconds(1) * flushInterval_, [&] { return !buffers_.empty(); });
 			}
 			buffers_.push_back(std::move(currentBuffer_));
 			currentBuffer_ = std::move(newBuffer1);
 			buffersToWrite.swap(buffers_);
-			if (!nextBuffer_)
-			{
+			if (!nextBuffer_) {
 				nextBuffer_ = std::move(newBuffer2);
 			}
 		}
 
-		// assert(!buffersToWrite.empty());
-
-		if (buffersToWrite.size() > 25)
-		{
+		if (buffersToWrite.size() > 25) {
 			char buf[256];
 			snprintf(buf, sizeof buf, "Dropped log messages at %s, %zd larger buffers\n",
-					 Timestamp::now().toFormattedString().c_str(),
-					 buffersToWrite.size() - 2);
+						Timestamp::now().toFormattedString().c_str(), buffersToWrite.size() - 2);
 			fputs(buf, stderr);
-			// output.append(buf, static_cast<int>(strlen(buf)));
-			output << buf;
+			::write(fd, buf, strlen(buf));
 			buffersToWrite.erase(buffersToWrite.begin() + 2, buffersToWrite.end());
 		}
 
-		for (const auto &buffer : buffersToWrite)
-		{
-			// FIXME: use unbuffered stdio FILE ? or use ::writev ?
-			// output.append(buffer->data(), buffer->length());
-			output << buffer->data();
+		for (const auto &buffer : buffersToWrite) {
+			::write(fd, buffer->data(), buffer->length());
 		}
 
-		if (buffersToWrite.size() > 2)
-		{
-			// drop non-bzero-ed buffers, avoid trashing
+		if (buffersToWrite.size() > 2) {
 			buffersToWrite.resize(2);
 		}
 
-		if (!newBuffer1)
-		{
-			// assert(!buffersToWrite.empty());
+		if (!newBuffer1) {
 			newBuffer1 = std::move(buffersToWrite.back());
 			buffersToWrite.pop_back();
 			newBuffer1->reset();
 		}
 
-		if (!newBuffer2)
-		{
-			// assert(!buffersToWrite.empty());
+		if (!newBuffer2) {
 			newBuffer2 = std::move(buffersToWrite.back());
 			buffersToWrite.pop_back();
 			newBuffer2->reset();
 		}
 
 		buffersToWrite.clear();
-		output.flush();
 	}
-	output.flush();
+	::close(fd);
 }

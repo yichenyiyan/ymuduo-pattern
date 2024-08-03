@@ -44,7 +44,7 @@ void TcpServer::start() {
 // 有一个新的客户端的连接，acceptor会执行这个回调
 void TcpServer::newConnection(int sockfd, const InetAddress& peerAddr) {
     // 轮询，选择一个subLoop
-    EventLoop *ioLoop = threadPool_->getNextLoop();
+    EventLoop* ioLoop = threadPool_->getNextLoop();
     char buf[64];
     snprintf(buf, sizeof(buf), "-%s#%d", ipPort_.c_str(), nextConnId_);
     ++nextConnId_;
@@ -58,10 +58,7 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peerAddr) {
 
     // 创建TcpConnection
     TcpConnectionPtr conn(new TcpConnection(ioLoop, 
-                                            connName,
-                                            sockfd,
-                                            localAddr,
-                                            peerAddr));
+            connName, sockfd, localAddr, peerAddr));
     connections_[connName] = conn;
     //下面的回调都是用户设置的 TcpServer=>TcpConnection
     conn->setConnectionCallback(connectionCallback_);
@@ -74,9 +71,12 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peerAddr) {
     ioLoop->runInLoop(std::bind(&TcpConnection::connectEstablished, conn));
     
 }
+
+
 void TcpServer::removeConnection(const TcpConnectionPtr& conn) {
     loop_->runInLoop(std::bind(&TcpServer::removeConnectionInLoop, this, conn));
 }
+
 // 在loop中移除，不会发生多线程的错误
 void TcpServer::removeConnectionInLoop(const TcpConnectionPtr& conn) {
     LOG_INFO("TcpServer::removeConnectionInLoop [%s] - connection %s\n", name_.c_str(), conn->name().c_str());

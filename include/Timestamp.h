@@ -2,13 +2,13 @@
 #define YMUDUO_TIMESTAMP
 
 #include <string>
+#include <sys/time.h>
+#include <inttypes.h>
 
-#include "noncopyable.h"
-
-namespace ymuduo{
+namespace ymuduo {
 
 // 时间类
-class Timestamp  {
+class Timestamp {
 public:
     Timestamp();
     explicit Timestamp(int64_t microSecondsSinceEpoch);
@@ -26,7 +26,7 @@ public:
 
     bool valid() const { return microSecondsSinceEpoch_ > 0; }
 
-
+    /* 返回一个无效的时间戳对象 */
     static Timestamp invalid()    { return Timestamp(); }
 
     static const int kMicroSecondsPerSecond = 1000 * 1000;
@@ -38,17 +38,16 @@ inline bool operator< (const Timestamp& lhs, const Timestamp& rhs) {
     return lhs.microSecondsSinceEpoch() < rhs.microSecondsSinceEpoch(); 
 }
 
-
 inline Timestamp addTime(Timestamp timestamp, double seconds) {
     int64_t delta = static_cast<int64_t>(seconds * Timestamp::kMicroSecondsPerSecond);
     return Timestamp(timestamp.microSecondsSinceEpoch() + delta);
 }
 
 inline double timeDifference(Timestamp high, Timestamp low) {
-  int64_t diff = high.microSecondsSinceEpoch() - low.microSecondsSinceEpoch();
-  return static_cast<double>(diff) / Timestamp::kMicroSecondsPerSecond;
+    int64_t diff = high.microSecondsSinceEpoch() - low.microSecondsSinceEpoch();
+    return static_cast<double>(diff) / Timestamp::kMicroSecondsPerSecond;
 }
 
-}
+}  // namespace ymuduo
 
 #endif
