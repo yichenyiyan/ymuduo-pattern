@@ -71,10 +71,10 @@ private:
     void handleRead();  //wake up
     void doPendingFunctors();   //执行回调
 
-    void printActiveChannels() const;
+    //void printActiveChannels() const;
 
     std::atomic_bool looping_;  //原子操作，通过CAS实现的
-    std::atomic_bool quit_; // 标志退出loop循环
+    std::atomic_bool quit_;     // 标志退出loop循环
     std::atomic_bool eventHandling_;    // 表示是否在处理事件
     
     const pid_t threadId_;  //记录当前线loop所在的线程

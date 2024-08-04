@@ -13,9 +13,6 @@ off_t kRollSize = 500 * 1000 * 1000;
 
 AsyncLogging* g_asyncLog = NULL;
 
-void asyncOutput(const char* msg, int len) {
-  g_asyncLog->append(msg, len);
-}
 
 class EchoServer {
 public:
@@ -64,7 +61,7 @@ private:
 int main(int argc, char** argv) {
     EventLoop* loop = new EventLoop();
     InetAddress addr("0.0.0.0", 8000);
-    EchoServer* server = new EchoServer(loop, addr, "EchoServer-01");
+    EchoServer* server = new EchoServer(loop, addr, "EchoServer");
     server->start();
     loop->loop();
 

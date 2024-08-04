@@ -2,7 +2,7 @@
 #include <iostream>
 
 #include "Logger.h"
-#include "Timestamp.h"
+
 
 using namespace ymuduo;
 
@@ -16,13 +16,13 @@ using namespace ymuduo;
 void Logger::defaultOutput(const std::string& msg) {
     if (!allowRecord)
         return;
+    
+    Timestamp now = Timestamp::now();
+    if (now >= nextRollOverTime_) {
+        rollOver();
+    }
     size_t n = write(log_file_fd_, msg.c_str(), msg.size());
 }
-
-// void Logger::defaultFlush() {
-//     fflush(stdout);
-// }
-
 
 
 Logger& Logger::GetInstance() {
@@ -53,6 +53,17 @@ void Logger::log(std::string msg) {
     if (logLevel_ == FATAL) {
         exit(0);
     }
+}
+
+void Logger::rollOver() {
+    if (log_file_fd_ != -1) {
+        ::close(log_file_fd_);
+    }
+
+    currentFileName_.clear();
+    currentFileName_ = log_file_name_ + getCurrentTimestamp() + ".log";
+    log_file_fd_ = ::open(currentFileName_.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
+    nextRollOverTime_ = addTime(Timestamp::now(), 3600 * roll_every_hours); 
 }
 
 

@@ -50,7 +50,9 @@ private:
     const int timerfd_;
     Channel timerfdChannel_;
     // 存储了Timer， 使用set容器（红黑树），按照Expiration时间进行排序
-    TimerList timers_;
+    TimerList timers_;  
+    // update: 使用小顶堆存储Timer
+
 
     ActiveTimerSet activeTimers_;
     bool callingExpiredTimers_;

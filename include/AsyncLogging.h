@@ -15,13 +15,28 @@ namespace ymuduo {
 
 class AsyncLogging : noncopyable {
 public:
-    AsyncLogging(const std::string& basename, off_t rollSize, const std::string& out_log_file_name = "async.log", int flushInterval = 3);
+    AsyncLogging(const std::string& basename, int rollTime = 1,
+        const std::string& out_log_file_name = "async", int flushInterval = 3);
+    
     ~AsyncLogging() {
         if (running_)
             stop();
     }
 
-    void append(const char* logline, int len);
+    void setAsyncLogFileName(const std::string& filename) { 
+        std::unique_lock<std::mutex>(mutex_);
+        basename_ = filename; 
+        ::close(log_fd_);
+        log_fd_ = -1;
+        log_file_name_.clear();
+        log_file_name_ = basename_ + ".log";
+        log_fd_ = ::open(log_file_name_.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0644);
+    }
+
+    void setRollTime(int hours) { roll_every_hours = hours; }
+
+    void append(const std::string& msg);
+
     void start() {
         running_ = true;
         thread_.start();
@@ -39,13 +54,13 @@ private:
 
     using Buffer = FixedBuffer<kLargeBuffer>;
     using BufferVector = std::vector<std::unique_ptr<Buffer>>;
-    using BufferPtr = BufferVector::value_type;
+    using BufferPtr = std::unique_ptr<Buffer>;
 
+    int log_fd_;
     std::string log_file_name_;
     const int flushInterval_;
     std::atomic<bool> running_;
-    const std::string basename_;
-    const off_t rollSize_;
+    std::string basename_;
     Thread thread_;
     CountDownLatch latch_;
     std::mutex mutex_;
@@ -53,6 +68,17 @@ private:
     BufferPtr currentBuffer_;
     BufferPtr nextBuffer_;
     BufferVector buffers_;
+
+private:
+    int roll_every_hours;
+    Timestamp nextRollOverTime_;
+    std::string currentFileName_;
+
+    std::string getCurrentFileName() const { return currentFileName_; }
+
+    std::string getCurrentTimestamp() const { return Timestamp::now().toFormattedStringWithoutSeconds(); }
+
+    void rollOver();
 };
 
 }  // namespace ymuduo

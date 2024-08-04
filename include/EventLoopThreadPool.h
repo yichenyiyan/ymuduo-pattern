@@ -37,7 +37,7 @@ public:
 
 private:
 
-    EventLoop *baseLoop_;   // 用户创建的 EventLoop loop;
+    EventLoop *baseLoop_;   // 用户创建的 EventLoop;
     std::string name_;
     bool started_;
     int numThreads_;

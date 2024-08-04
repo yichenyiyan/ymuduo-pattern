@@ -125,6 +125,7 @@ void EventLoop::runInLoop(Functor cb) {
     else    // 在非当前loop线程执行cb,需要唤醒loop所在线程执行cb
         queueInLoop(cb);
 }
+
 // 把cb放入队列，唤醒loop所在的线程，执行cb
 void EventLoop::queueInLoop(Functor cb) {
     {

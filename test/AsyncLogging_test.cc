@@ -1,37 +1,61 @@
-#include <iostream>
-#include <thread>
+#include <stdio.h>
+#include <sys/resource.h>
 #include <unistd.h>
 
+#include "Timestamp.h"
 #include "AsyncLogging.h"
-#include "CurrentThread.h"
+
 
 using namespace ymuduo;
+off_t kRollSize = 500*1000*1000;
 
-// 一个简单的日志生成函数
-void logGenerator(AsyncLogging& logger, int count) {
-    for (int i = 0; i < count; ++i) {
-        std::string log = "thread id: " + std::to_string(CurrentThread::tid()) +  " to record log message " + std::to_string(i) +"\n";
-        logger.append(log.c_str(), log.length());
-        usleep(100); 
+AsyncLogging* g_asyncLog = NULL;
+
+void asyncOutput(const std::string& msg) {
+    g_asyncLog->append(msg);
+}
+
+void bench(bool longLog) {
+    Logger& logger = Logger::GetInstance();
+    logger.setOutPut(asyncOutput);
+
+    int cnt = 0;
+    const int kBatch = 1000;
+    std::string empty = " ";
+    std::string longStr(250, 'X');
+    longStr += " ";
+
+    for (int t = 0; t < 30; ++t) {
+        Timestamp start = ymuduo::Timestamp::now();
+        for (int i = 0; i < kBatch; ++i) {
+            LOG_INFO("Hello yichen%s%d", longStr.c_str(), cnt);
+            ++cnt;
+        }
+        Timestamp end = Timestamp::now();
+        printf("%f\n", timeDifference(end, start) * 1000000 / kBatch);
+        struct timespec ts = { 0, 500*1000*1000 };
+        nanosleep(&ts, NULL);
     }
 }
 
-int main() {
-    AsyncLogging logger("test_log", 500 * 1024 * 1024);
+int main(int argc, char* argv[]) {
+    {
+        // set max virtual memory to 2GB.
+        size_t kOneGB = 1000 * 1024 * 1024;
+        rlimit rl = { 2*kOneGB, 2*kOneGB };
+        setrlimit(RLIMIT_AS, &rl);
+    }
 
-    logger.start();
+    printf("pid = %d\n", getpid());
 
-    // 创建多个线程来生成日志消息
-    std::thread t1(logGenerator, std::ref(logger), 100);
-    std::thread t2(logGenerator, std::ref(logger), 100);
-    std::thread t3(logGenerator, std::ref(logger), 100);
+    char name[256] = { '\0' };
+    strncpy(name, argv[0], sizeof name - 1);
+    AsyncLogging log(::basename(name), kRollSize);
+    log.start();
+    g_asyncLog = &log;
 
-    t1.join();
-    t2.join();
-    t3.join();
+    bool longLog = argc > 1;
+    bench(longLog);
 
-    logger.stop();
-
-    std::cout << "Log generation completed." << std::endl;
     return 0;
 }

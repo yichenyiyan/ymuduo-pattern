@@ -1,4 +1,4 @@
-4核 伪6G内存 压力测试结果如下：
+4核 桌面版Ubuntu22.04 伪6G内存 压力测试结果如下：
 
 yichen@yichen-Ubuntu:/mnt/hgfs/Share/TMP/mymuduo/http$ ls
 ab_http_stress_test.sh  HttpContext.cc  HttpRequest.h    HttpResponse.h  http_server2     HttpServer.cc  Server.log

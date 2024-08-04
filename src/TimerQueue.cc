@@ -108,7 +108,7 @@ void TimerQueue::cancelInLoop(TimerId timerId) {
 
 }
 
-//当timerfd事件就绪时执行
+// 当timerfd事件就绪时执行
 void TimerQueue::handleRead() {
     Timestamp now(Timestamp::now());
     readTimerfd(timerfd_, now);
@@ -124,7 +124,7 @@ void TimerQueue::handleRead() {
     reset(expired, now);
 }
 
-//将所有超时的timer移除
+// 将所有超时的timer移除
 std::vector<TimerQueue::Entry> TimerQueue::getExpired(Timestamp now) {
     std::vector<Entry> expired;
     Entry sentry(now, reinterpret_cast<TimerPtr>(UINTPTR_MAX));
@@ -138,6 +138,8 @@ std::vector<TimerQueue::Entry> TimerQueue::getExpired(Timestamp now) {
     }
     return expired;
 }
+
+
 void TimerQueue::reset(const std::vector<Entry>& expired, Timestamp now) {
     Timestamp nextExpire;
     

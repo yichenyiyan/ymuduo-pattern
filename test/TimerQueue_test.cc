@@ -1,45 +1,71 @@
+#include <stdio.h>
 #include <unistd.h>
 
-#include <memory>
-#include <iostream>
-
-#include "Timer.h"
+#include "Logger.h"
+#include "Thread.h"
 #include "EventLoop.h"
-#include "TimerQueue.h"
+#include "EventLoopThread.h"
 
 using namespace ymuduo;
 
-static int change_able_number_ = 0;
+static int cnt = 0;
+EventLoop* g_loop;
 
-static void func1() {
-    std::cout << "timer func1" << std::endl;
-    change_able_number_++;
+void funcPrintTid() {
+    printf("pid = %d, tid = %d\n", getpid(), CurrentThread::tid());
+    printf("toString now:%s\n", Timestamp::now().toString().c_str());
+    printf("toFormattedString now:%s\n", Timestamp::now().toFormattedString().c_str());
+
 }
 
+void funcPrint(const char* msg) {
+    printf("toString: msg %s %s\n", Timestamp::now().toString().c_str(), msg);
+    printf("toFormattedString: msg %s %s\n", Timestamp::now().toFormattedString().c_str(), msg);
 
-static void func2() {
-    std::cout << "timer func2" << std::endl;
-    change_able_number_ += 2;
-}
-
-static void testFunc() {
-    std::unique_ptr<EventLoop> loop = std::make_unique<EventLoop>();
-    std::unique_ptr<TimerQueue> tqueue = std::make_unique<TimerQueue>(loop.get());
-    TimerCallback cb1 = std::bind(func1);
-    TimerCallback cb2 = std::bind(func2);
-    for (int i = 0; i < 4; ++i) {
-        if (i % 2 == 0)
-            tqueue->addTimer(cb1, Timestamp::now(), 2.000);
-        else
-            tqueue->addTimer(cb2, Timestamp::now(), 2.000);
+    if (++cnt == 20) {
+        g_loop->quit();
     }
+}
 
-    sleep(8);
-    std::cout << "timer all number: " << Timer::numCreated() << std::endl; 
-    std::cout << "after 8 seconds the number value is: " << change_able_number_ << std::endl; 
+void cancel(TimerId timer) {
+    g_loop->cancel(timer);
+    printf("toString: cancelled at %s\n", Timestamp::now().toString().c_str());
+    printf("toFormattedString: cancelled at %s\n", Timestamp::now().toFormattedString().c_str());
+
 }
 
 int main() {
-    testFunc();
+    Logger& logger_ = Logger::GetInstance();
+    logger_.setLoggerFileName("timer-queue-test");
+    funcPrintTid();
+    sleep(1);
+    {
+        EventLoop loop;
+        g_loop = &loop;
+
+        funcPrint("main");
+        loop.runAfter(1, std::bind(funcPrint, "interval 1"));
+        loop.runAfter(1.5, std::bind(funcPrint, "interval 1.5"));
+        loop.runAfter(2.5, std::bind(funcPrint, "interval 2.5"));
+        loop.runAfter(3.5, std::bind(funcPrint, "interval 3.5"));
+        TimerId t45 = loop.runAfter(4.5, std::bind(funcPrint, "interval 4.5"));
+        loop.runAfter(4.2, std::bind(cancel, t45));
+        loop.runAfter(4.8, std::bind(cancel, t45));
+        loop.runEvery(2, std::bind(funcPrint, "memfunc runevery 2"));
+        TimerId t3 = loop.runEvery(3, std::bind(funcPrint, "memfunc runevery 3"));
+        loop.runAfter(9.001, std::bind(cancel, t3));
+
+        loop.loop();
+        funcPrint("main loop exits");
+    }
+    sleep(1);
+    {
+        EventLoopThread loopThread;
+        EventLoop* loop = loopThread.startLoop();
+        loop->runAfter(2, funcPrintTid);
+        sleep(3);
+        funcPrint("thread loop exits");
+    }
+
     return 0;
 }
